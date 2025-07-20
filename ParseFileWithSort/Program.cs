@@ -1,7 +1,8 @@
 ﻿using ParseFileWithSort;
 
 
-string filePath = @"D:\file\uset.txt"; // Файл должен быть в рабочей директории
+string executableDirectory = AppDomain.CurrentDomain.BaseDirectory;
+string filePath = Path.Combine(executableDirectory, "user.txt");
 
 if (!File.Exists(filePath))
 {

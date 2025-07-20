@@ -1,13 +1,16 @@
 ﻿namespace ParseFileWithSort;
 
-class UserDataViewer
+public class UserDataViewer
 {
-    private List<User> _users;
-    private List<User> _filteredUsers;
-    private int _pageSize = 10;
+    private const int DefaultPageSize = 10;
+    private const string DefaultSortColumn = "Id";
+
+    private readonly List<User> _users;
+    private IReadOnlyList<User> _filteredUsers;
+    private int _pageSize = DefaultPageSize;
     private int _currentPage = 1;
     private string _searchTerm = "";
-    private string _sortColumn = "Id";
+    private string _sortColumn = DefaultSortColumn;
     private bool _sortAscending = true;
 
     public UserDataViewer(List<User> users)
@@ -19,15 +22,15 @@ class UserDataViewer
     public void Run()
     {
         Console.TreatControlCAsInput = true;
-    
+
         while (true)
         {
             Console.Clear();
             DisplayUsers();
             DisplayMenu();
-        
+
             var key = Console.ReadKey(intercept: true).Key;
-        
+
             switch (key)
             {
                 case ConsoleKey.Q:
@@ -70,7 +73,6 @@ class UserDataViewer
             }
         }
     }
-    
 
     private void DisplayUsers()
     {
@@ -123,90 +125,67 @@ class UserDataViewer
     private void Search()
     {
         Console.Write("Введите текст для поиска: ");
-        _searchTerm = Console.ReadLine();
+        var newSearchTerm = Console.ReadLine();
 
-        ApplyFilters();
+        if (newSearchTerm != _searchTerm)
+        {
+            _searchTerm = newSearchTerm;
+            ApplyFiltersAndSorting();
+        }
     }
 
     private void ChangePageSize()
     {
         Console.Write("Введите новый размер страницы: ");
-        if (int.TryParse(Console.ReadLine(), out int newSize) && newSize > 0)
+        if (int.TryParse(Console.ReadLine(), out int newSize) && newSize > 0 && newSize != _pageSize)
         {
             _pageSize = newSize;
             _currentPage = 1;
         }
     }
 
-    private void SortBy(string column)
+    public void SortBy(string column)
     {
-        _sortColumn = column;
-        ApplyFilters();
+        if (_sortColumn != column)
+        {
+            _sortColumn = column;
+            ApplyFiltersAndSorting();
+        }
     }
 
     private void ToggleSortOrder()
     {
         _sortAscending = !_sortAscending;
-        ApplyFilters();
+        ApplyFiltersAndSorting();
     }
 
-    private void ApplyFilters()
+    private void ApplyFiltersAndSorting()
     {
-        if (string.IsNullOrWhiteSpace(_searchTerm))
+        var query = _users.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(_searchTerm))
         {
-            _filteredUsers = new List<User>(_users);
+            query = query.Where(u => (u.Id ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                     (u.FirstName ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                     (u.LastName ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                     (u.Email ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                     (u.Gender ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                                     (u.IpAddress ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase));
         }
-        else
+
+        query = _sortColumn switch
         {
-            _filteredUsers = _users
-                .Where(u => (u.Id ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                            (u.FirstName ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                            (u.LastName ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                            (u.Email ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                            (u.Gender ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
-                            (u.IpAddress ?? "").Contains(_searchTerm, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-    
-        ApplySorting();
+            "Id" => _sortAscending ? query.OrderBy(u => u.Id) : query.OrderByDescending(u => u.Id),
+            "FirstName" => _sortAscending ? query.OrderBy(u => u.FirstName) : query.OrderByDescending(u => u.FirstName),
+            "LastName" => _sortAscending ? query.OrderBy(u => u.LastName) : query.OrderByDescending(u => u.LastName),
+            "Email" => _sortAscending ? query.OrderBy(u => u.Email) : query.OrderByDescending(u => u.Email),
+            "Gender" => _sortAscending ? query.OrderBy(u => u.Gender) : query.OrderByDescending(u => u.Gender),
+            "IpAddress" => _sortAscending ? query.OrderBy(u => u.IpAddress) : query.OrderByDescending(u => u.IpAddress),
+            _ => query
+        };
+
+        _filteredUsers = query.ToList();
         _currentPage = 1;
-    }
-
-    private void ApplySorting()
-    {
-        switch (_sortColumn)
-        {
-            case "Id":
-                _filteredUsers = _sortAscending
-                    ? _filteredUsers.OrderBy(u => u.Id).ToList()
-                    : _filteredUsers.OrderByDescending(u => u.Id).ToList();
-                break;
-            case "FirstName":
-                _filteredUsers = _sortAscending
-                    ? _filteredUsers.OrderBy(u => u.FirstName).ToList()
-                    : _filteredUsers.OrderByDescending(u => u.FirstName).ToList();
-                break;
-            case "LastName":
-                _filteredUsers = _sortAscending
-                    ? _filteredUsers.OrderBy(u => u.LastName).ToList()
-                    : _filteredUsers.OrderByDescending(u => u.LastName).ToList();
-                break;
-            case "Email":
-                _filteredUsers = _sortAscending
-                    ? _filteredUsers.OrderBy(u => u.Email).ToList()
-                    : _filteredUsers.OrderByDescending(u => u.Email).ToList();
-                break;
-            case "Gender":
-                _filteredUsers = _sortAscending
-                    ? _filteredUsers.OrderBy(u => u.Gender).ToList()
-                    : _filteredUsers.OrderByDescending(u => u.Gender).ToList();
-                break;
-            case "IpAddress":
-                _filteredUsers = _sortAscending
-                    ? _filteredUsers.OrderBy(u => u.IpAddress).ToList()
-                    : _filteredUsers.OrderByDescending(u => u.IpAddress).ToList();
-                break;
-        }
     }
 
     private int TotalPages => (int)Math.Ceiling((double)_filteredUsers.Count / _pageSize);
